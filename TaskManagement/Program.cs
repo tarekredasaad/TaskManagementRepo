@@ -7,8 +7,14 @@ using MyProject.Infrastructure;
 using MyProject.Infrastructure.Services;
 using TaskManagement.Middleware;
 using TaskManagement.Models;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, configuration) =>
+    configuration.ReadFrom.Configuration(context.Configuration)
+                 .WriteTo.Console()
+                 .Enrich.FromLogContext());
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<UserState>(sp =>

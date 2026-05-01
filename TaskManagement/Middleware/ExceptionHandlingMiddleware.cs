@@ -6,10 +6,12 @@ namespace TaskManagement.Middleware;
 public class ExceptionHandlingMiddleware
 {
     private readonly RequestDelegate _next;
+    private readonly ILogger<ExceptionHandlingMiddleware> _logger;
 
-    public ExceptionHandlingMiddleware(RequestDelegate next)
+    public ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
     {
         _next = next;
+        _logger = logger;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -27,8 +29,9 @@ public class ExceptionHandlingMiddleware
         {
             await WriteError(context, HttpStatusCode.BadRequest, ex.Message);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "An unexpected error occurred.");
             await WriteError(context, HttpStatusCode.InternalServerError, "An unexpected error occurred.");
         }
     }

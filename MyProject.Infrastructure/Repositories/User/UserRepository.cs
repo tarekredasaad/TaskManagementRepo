@@ -34,6 +34,7 @@ public class UserRepository : IUserRepository
 
     public void Remove(Domain.Entities.User user)
     {
-        _context.Users.Remove(user);
+        user.IsDeleted = true;
+        _context.Users.Update(user);
     }
 }

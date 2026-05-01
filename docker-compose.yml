@@ -11,5 +11,34 @@ services:
     command: ["redis-server", "--appendonly", "yes"]
     restart: unless-stopped
 
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: taskmanagement-sql
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=SuperStrongPassword123!
+    ports:
+      - "1433:1433"
+    volumes:
+      - sql-data:/var/opt/mssql
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: taskmanagement-api
+    ports:
+      - "8080:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=TaskManagementDb;User Id=sa;Password=SuperStrongPassword123!;TrustServerCertificate=True;
+      - ConnectionStrings__Redis=redis:6379
+    depends_on:
+      - sqlserver
+      - redis
+    restart: unless-stopped
+
 volumes:
   redis-data:
+  sql-data:

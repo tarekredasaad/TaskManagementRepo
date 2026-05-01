@@ -2,8 +2,10 @@ using Application.Dtos;
 using Application.Services;
 using Domain.Entities;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using MyProject.Infrastructure.Helper;
 using MyProject.Infrastructure.Repositories.User;
+using System.Security.Cryptography;
 
 namespace MyProject.Infrastructure.Services;
 
@@ -40,11 +42,19 @@ public class AuthService : IAuthService
         };
         user.PasswordHash = _passwordHasher.HashPassword(user, request.Password);
 
+        user.RefreshToken = GenerateRefreshToken();
+        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+
         await _userRepository.AddAsync(user);
         await _dbContext.SaveChangesAsync();
 
         var userDto = ToUserDto(user);
-        return new AuthResponse { Token = JwtHelper.GenerateToken(userDto), User = userDto };
+        return new AuthResponse 
+        { 
+            Token = JwtHelper.GenerateToken(userDto), 
+            RefreshToken = user.RefreshToken,
+            User = userDto 
+        };
     }
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
@@ -61,8 +71,49 @@ public class AuthService : IAuthService
             throw new UnauthorizedAccessException("Invalid credentials.");
         }
 
+        user.RefreshToken = GenerateRefreshToken();
+        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+        await _dbContext.SaveChangesAsync();
+
         var userDto = ToUserDto(user);
-        return new AuthResponse { Token = JwtHelper.GenerateToken(userDto), User = userDto };
+        return new AuthResponse 
+        { 
+            Token = JwtHelper.GenerateToken(userDto), 
+            RefreshToken = user.RefreshToken,
+            User = userDto 
+        };
+    }
+
+    public async Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request)
+    {
+        var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.RefreshToken == request.RefreshToken);
+        if (user is null || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+        {
+            throw new UnauthorizedAccessException("Invalid or expired refresh token.");
+        }
+
+        var userDto = ToUserDto(user);
+        var newJwtToken = JwtHelper.GenerateToken(userDto);
+        var newRefreshToken = GenerateRefreshToken();
+
+        user.RefreshToken = newRefreshToken;
+        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+        await _dbContext.SaveChangesAsync();
+
+        return new AuthResponse 
+        { 
+            Token = newJwtToken, 
+            RefreshToken = newRefreshToken,
+            User = userDto 
+        };
+    }
+
+    private static string GenerateRefreshToken()
+    {
+        var randomNumber = new byte[32];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomNumber);
+        return Convert.ToBase64String(randomNumber);
     }
 
     private static UserDto ToUserDto(User user) => new()

@@ -21,6 +21,7 @@ namespace MyProject.Infrastructure
                 builder.Property(x => x.Email).HasMaxLength(255).IsRequired();
                 builder.Property(x => x.PasswordHash).IsRequired();
                 builder.Property(x => x.Role).HasMaxLength(20).IsRequired();
+                builder.HasQueryFilter(x => !x.IsDeleted);
             });
 
             modelBuilder.Entity<TaskItem>(builder =>

@@ -38,6 +38,14 @@ public class AuthController : BaseController
         return Ok(result);
     }
 
+    [HttpPost("refresh-token")]
+    [AllowAnonymous]
+    public async Task<ActionResult<AuthResponse>> RefreshToken([FromBody] RefreshTokenRequest request)
+    {
+        var result = await _authService.RefreshTokenAsync(request);
+        return Ok(result);
+    }
+
     [HttpGet("me")]
     [Authorize(Roles = "User,Admin")]
     public async Task<ActionResult<UserDto>> Me()
